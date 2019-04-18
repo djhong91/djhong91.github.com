@@ -31,7 +31,7 @@ print_hi('Tom')
 
 **하이퍼링크**
 
-나의 깃허브 페이지: [djhong91.github.com](djhong91.github.com)
+나의 깃허브 페이지: [djhong91.github.io](djhong91.github.io)
 
 ---
 **대망의 LaTeX Math**
