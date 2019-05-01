@@ -9,4 +9,4 @@ categories: jekyll update
 
 <script src="https://gist.github.com/djhong91/bcfddadac18d95efff57ac644c202931.js"></script>
 
-![NotIdentityMatrix]({{"/assets/190501-identitymatrix.PNG" | relative_url}})
+![NotIdentityMatrix]({{"/assets/images/190501-identitymatrix.PNG" | relative_url}})
