@@ -15,4 +15,4 @@ categories: jekyll update
 <br/>
 ## 결과
 ---
-![NotIdentityMatrix]({{"/assets/images/190501-identitymatrix.PNG" | relative_url}})
+![NotIdentityMatrix]({{"/assets/images/190501-identitymatrix.PNG"}})
