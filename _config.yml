@@ -18,7 +18,7 @@ title: 하와와, 현대판 개발-노예쟝
 description: >- # this means to ignore newlines until "baseurl:"
   세계 최고의 사축(社畜)을 목표로!
 baseurl: "" # the subpath of your site, e.g. /blog
-url: "" # the base hostname & protocol for your site, e.g. http://example.com
+url: "http://djhong91.github.io" # the base hostname & protocol for your site, e.g. http://example.com
 #twitter_username: jekyllrb
 github_username:  djhong91
 
