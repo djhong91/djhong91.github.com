@@ -1,0 +1,501 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>확산 모델 기반 필기 이미지 생성에 관한 연구 (A Study on Handwritten Image Generation based on Diffusion Model)</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #2c3e50;
+            --secondary-color: #3498db;
+            --background-color: #f8f9fa;
+            --text-color: #34495e;
+            --heading-font: 'Roboto', 'Noto Sans KR', sans-serif;
+            --body-font: 'Noto Sans KR', sans-serif;
+            --card-bg: #ffffff;
+            --card-shadow: 0 4px 15px rgba(0, 0, 0, 0.08);
+            --border-radius: 8px;
+        }
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+        body {
+            font-family: var(--body-font);
+            margin: 0;
+            background-color: var(--background-color);
+            color: var(--text-color);
+            line-height: 1.8;
+            font-size: 16px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            background: var(--primary-color);
+            color: white;
+            padding: 5rem 2rem;
+            text-align: center;
+            border-bottom-left-radius: var(--border-radius);
+            border-bottom-right-radius: var(--border-radius);
+        }
+
+        header h1 {
+            font-family: var(--heading-font);
+            font-size: 2.8rem;
+            margin: 0 0 1rem 0;
+            font-weight: 700;
+        }
+
+        header .author-info {
+            font-size: 1.2rem;
+            font-weight: 300;
+            margin-bottom: 2rem;
+        }
+        
+        header .author-info span {
+            display: block;
+            margin-top: 0.5rem;
+        }
+
+        .abstract {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            text-align: left;
+            font-size: 1rem;
+            max-width: 800px;
+            margin: 2rem auto 0;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .abstract h3 {
+            margin-top: 0;
+            font-family: var(--heading-font);
+            color: var(--secondary-color);
+        }
+
+        nav {
+            position: sticky;
+            top: 0;
+            background: var(--card-bg);
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            z-index: 1000;
+            padding: 0.5rem 0;
+        }
+        
+        nav .container {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            padding: 0.5rem 1rem;
+        }
+
+        nav a {
+            color: var(--primary-color);
+            text-decoration: none;
+            padding: 0.8rem 1.2rem;
+            font-family: var(--heading-font);
+            font-weight: 500;
+            transition: color 0.3s, background-color 0.3s;
+            border-radius: 4px;
+        }
+
+        nav a:hover {
+            color: var(--secondary-color);
+            background-color: #ecf0f1;
+        }
+
+        section {
+            padding: 4rem 0;
+            border-bottom: 1px solid #e0e0e0;
+        }
+        
+        section:last-of-type {
+            border-bottom: none;
+        }
+
+        h2 {
+            text-align: center;
+            font-family: var(--heading-font);
+            font-size: 2.5rem;
+            margin-bottom: 3rem;
+            color: var(--primary-color);
+            position: relative;
+        }
+        
+        h2::after {
+            content: '';
+            display: block;
+            width: 80px;
+            height: 4px;
+            background: var(--secondary-color);
+            margin: 0.5rem auto 0;
+            border-radius: 2px;
+        }
+        
+        h3 {
+            font-family: var(--heading-font);
+            font-size: 1.8rem;
+            color: var(--primary-color);
+            border-left: 5px solid var(--secondary-color);
+            padding-left: 1rem;
+            margin-top: 3rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        h4 {
+            font-family: var(--heading-font);
+            font-size: 1.4rem;
+            color: var(--text-color);
+            margin-top: 2rem;
+            margin-bottom: 1rem;
+        }
+
+        .card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+            margin-bottom: 2rem;
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2.5rem;
+            align-items: center;
+        }
+
+        .img-container {
+            text-align: center;
+        }
+
+        .img-container img {
+            max-width: 100%;
+            border-radius: var(--border-radius);
+            box-shadow: var(--card-shadow);
+        }
+
+        .img-container figcaption {
+            margin-top: 1rem;
+            font-style: italic;
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
+
+        ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        
+        ul li {
+            background: url('data:image/svg+xml;charset=UTF-8,<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="%233498db" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg>') no-repeat left center;
+            padding-left: 2.5rem;
+            margin-bottom: 1rem;
+            font-size: 1.05rem;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-top: 2rem;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: center;
+        }
+
+        th, td {
+            padding: 1rem 0.8rem;
+            border: 1px solid #ddd;
+        }
+
+        th {
+            background-color: var(--primary-color);
+            color: white;
+            font-family: var(--heading-font);
+        }
+
+        tbody tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        
+        .highlight {
+            font-weight: bold;
+        }
+
+        footer {
+            text-align: center;
+            padding: 2rem;
+            background: var(--primary-color);
+            color: rgba(255, 255, 255, 0.7);
+        }
+        
+        @media (max-width: 768px) {
+            header h1 {
+                font-size: 2rem;
+            }
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            nav .container {
+                flex-direction: column;
+                align-items: center;
+            }
+            nav a {
+                width: 100%;
+                text-align: center;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="container">
+            <h1>확산 모델 기반 필기 이미지 생성에 관한 연구</h1>
+            <p class="author-info">
+                <strong>홍동진</strong>
+                <span>부산대학교 대학원 정보융합공학과</span>
+                <span>2025년 8월</span>
+            </p>
+            <div class="abstract">
+                <h3>Abstract</h3>
+                <p>
+                    Even in the current era where digital technology replaces daily life, handwriting images continue to play important roles in education, healthcare, finance, and art. This paper proposes specialized diffusion models for generating two key elements: signatures and characters. For signature generation, a conditional diffusion model is proposed that adopts a unified embedding approach for timestep and class information. To ensure global consistency in the sparse foreground, self-attention is selectively applied in low-resolution stages, and an EMA network is employed to improve generation stability. For character generation, a latent diffusion model performs efficient diffusion in the latent space via a VAE. A dual-encoder architecture separates content and style, which are then injected using channel and cross-attention respectively. Experimental results show the proposed signature model achieved high verification (98.9% on BHSig260-B) and identification (99.4% on BHSig260-B) accuracy. The character model achieved an FID of 19.58 and SSIM of 0.9655, demonstrating practical applicability. This study experimentally validates the design principles of each component, presenting both commonly applicable guidelines and domain-specific strategies.
+                </p>
+            </div>
+        </div>
+    </header>
+
+    <nav>
+        <div class="container">
+            <a href="#introduction">연구 배경</a>
+            <a href="#signature-model">서명 생성 모델</a>
+            <a href="#character-model">문자 생성 모델</a>
+            <a href="#results">실험 결과</a>
+            <a href="#conclusion">결론</a>
+        </div>
+    </nav>
+
+    <main>
+        <section id="introduction">
+            <div class="container">
+                <h2>연구 배경</h2>
+                <div class="card">
+                    <p>디지털 기술이 보편화된 현대 사회에서도 손으로 쓴 필기 이미지는 교육, 의료, 금융, 예술 등 다양한 분야에서 여전히 중요한 역할을 합니다. 특히, 법적 효력을 지닌 서명은 개인 인증의 핵심 수단이며, 손글씨는 개인의 정체성과 감성을 담는 중요한 소통 도구입니다. </p>
+                    <p>하지만 질병, 사고, 노화 등의 원인으로 필기에 어려움을 겪는 사람들이 증가하고 있습니다. 이들은 일상적인 서류 작성부터 개인적인 메모까지 타인의 도움이 필요하며, 이는 개인의 독립성과 자존감에 부정적인 영향을 미칩니다. </p>
+                    <p>본 연구는 이러한 문제 해결에 기여하고자 합니다. 개인의 고유한 필체를 학습하여 서명이나 문자를 생성하는 기술은 신체적 제약을 극복하는 효과적인 보조 도구가 될 수 있습니다. 기존의 GAN이나 VAE 기반 모델들은 모드 붕괴(mode collapse)나 흐림(blurring) 현상과 같은 문제로 인해 선명하고 다양한 필기 이미지 생성에 한계가 있었습니다. 본 연구에서는 이러한 한계를 극복하기 위해 확산 모델을 기반으로 한 새로운 필기 이미지 생성 모델을 제안합니다. </p>
+                </div>
+            </div>
+        </section>
+
+        <section id="signature-model">
+            <div class="container">
+                <h2>서명 이미지 생성 모델</h2>
+                <div class="card">
+                    <h3>조건부 확산 모델 기반 서명 생성</h3>
+                    <div class="grid-2">
+                        <div>
+                            <p>다중 사용자 환경에서 특정 개인의 서명을 선택적으로 생성하기 위해 조건부 확산 모델을 설계했습니다. 이 모델은 기존 생성 모델의 구조적 한계를 극복하고, 서명 이미지의 희소하면서도 정교한 특성을 효과적으로 학습하는 것을 목표로 합니다. </p>
+                            <h4>핵심 설계 전략</h4>
+                            <ul>
+                                <li><strong>시간-클래스 통합 임베딩:</strong> 타임스텝과 사용자 클래스 정보를 하나의 임베딩으로 통합하여 네트워크에 일관되게 전달합니다. 이는 클래스 간 간섭을 최소화하고 안정적인 개인별 필체 재현을 가능하게 합니다. </li>
+                                <li><strong>적응적 자기 어텐션:</strong> 서명의 전체적인 구조와 장거리 획 연결성을 학습하기 위해, 계산 효율성을 고려하여 저해상도 특징 처리 구간에만 자기 어텐션(Self-Attention)을 적용합니다. </li>
+                                <li><strong>EMA 네트워크:</strong> 학습 과정에서 발생하는 파라미터의 변동을 완화하여 생성 품질의 일관성과 안정성을 크게 향상시킵니다. </li>
+                            </ul>
+                        </div>
+                        <div class="img-container">
+                            <img src="fig3.png" alt="제안하는 서명 이미지 생성 모델 구조">
+                            <figcaption>그림 3. 제안하는 서명 이미지 생성 모델 구조 </figcaption>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="character-model">
+            <div class="container">
+                <h2>문자 이미지 생성 모델</h2>
+                 <div class="card">
+                    <h3>잠재 확산 모델 기반 문자 스타일 전이</h3>
+                    <div class="grid-2">
+                         <div class="img-container">
+                            <img src="fig6.png" alt="제안하는 문자 이미지 생성 모델 구조">
+                            <figcaption>그림 6. 제안하는 문자 이미지 생성 모델 구조 </figcaption>
+                        </div>
+                        <div>
+                            <p>문자의 구조(콘텐트)와 필체(스타일)를 분리하여 새로운 스타일의 문자 이미지를 생성하는 잠재 확산 모델(Latent Diffusion Model)을 제안합니다. 이 모델은 학습 과정에서 보지 못한 새로운 문자에 대해서도 스타일을 적용할 수 있는 일반화 성능 확보를 목표로 합니다. </p>
+                            <h4>핵심 설계 전략</h4>
+                            <ul>
+                                <li><strong>잠재 공간 확산:</strong> VAE를 통해 고해상도 문자 이미지를 저차원의 잠재 공간으로 압축한 후 확산 과정을 수행하여 계산 효율성과 생성 품질을 동시에 확보합니다. </li>
+                                <li><strong>콘텐트-스타일 분리를 위한 이중 인코더:</strong> 콘텐트 인코더는 문자의 구조적 정보를, 스타일 인코더는 필체 특성을 각각 추출합니다. 이를 통해 학습하지 않은 문자도 생성할 수 있는 일반화 능력을 확보합니다. </li>
+                                <li><strong>효과적인 조건 통합:</strong> 콘텐트 정보는 채널 어텐션(Channel Attention)을 통해, 스타일 정보는 교차 어텐션(Cross-Attention)을 통해 U-Net에 주입하여 두 정보가 효과적으로 융합되도록 합니다. </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+        
+        <section id="results">
+            <div class="container">
+                <h2>주요 실험 결과</h2>
+                
+                <h3>서명 이미지 생성 결과</h3>
+                <div class="card">
+                     <div class="img-container">
+                        <img src="fig10.png" alt="서명 생성 결과 비교">
+                        <figcaption>그림 10. 기존 모델(a, b) 및 제안 모델(c)과 구성 요소 변경(d, e, f)에 따른 서명 생성 결과 비교 </figcaption>
+                    </div>
+                    <p>제안된 서명 생성 모델은 기존의 cGAN, CVAE 모델과 비교하여 모든 평가 지표에서 월등한 성능을 보였습니다. 특히 BHSig260-B 데이터셋에서 EER 0.011, 유사도 정확도 98.9%를 달성하여, 생성된 서명이 실제 서명과 매우 유사하며 개인의 특성을 잘 반영함을 입증했습니다. 자기 어텐션과 EMA 네트워크가 모델 성능에 결정적인 역할을 하는 것을 확인했습니다. </p>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>데이터셋</th>
+                                    <th>방법</th>
+                                    <th>유사도 Acc.(%)↑</th>
+                                    <th>클래스 Acc.(%)↑</th>
+                                    <th>EER↓</th>
+                                    <th>FID↓</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td rowspan="3">CEDAR</td>
+                                    <td>cGAN</td>
+                                    <td>78.1</td>
+                                    <td>71.5</td>
+                                    <td>0.219</td>
+                                    <td>259.27</td>
+                                </tr>
+                                <tr>
+                                    <td>CVAE</td>
+                                    <td>88.3</td>
+                                    <td>84.1</td>
+                                    <td>0.117</td>
+                                    <td>63.42</td>
+                                </tr>
+                                <tr>
+                                    <td class="highlight">제안 모델</td>
+                                    <td class="highlight">93.0</td>
+                                    <td class="highlight">93.4</td>
+                                    <td class="highlight">0.070</td>
+                                    <td class="highlight">15.42</td>
+                                </tr>
+                                <tr>
+                                    <td rowspan="3">BHSig260-B</td>
+                                    <td>cGAN</td>
+                                    <td>71.8</td>
+                                    <td>30.8</td>
+                                    <td>0.286</td>
+                                    <td>189.31</td>
+                                </tr>
+                                <tr>
+                                    <td>CVAE</td>
+                                    <td>86.9</td>
+                                    <td>74.5</td>
+                                    <td>0.131</td>
+                                    <td>172.98</td>
+                                </tr>
+                                <tr>
+                                    <td class="highlight">제안 모델</td>
+                                    <td class="highlight">98.9</td>
+                                    <td class="highlight">99.4</td>
+                                    <td class="highlight">0.011</td>
+                                    <td class="highlight">4.77</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <h3>문자 이미지 생성 결과</h3>
+                 <div class="card">
+                    <div class="img-container">
+                        <img src="fig11.png" alt="문자 생성 결과 비교">
+                        <figcaption>그림 11. 제안 모델(a,b)과 FontDiffuser(c,d)의 문자 생성 결과 </figcaption>
+                    </div>
+                    <p>제안된 문자 생성 모델은 기존 확산 모델 기반 연구인 FontDiffuser와 비교하여 더 우수한 품질과 일반화 성능을 보였습니다. 특히 잠재 공간에서의 확산 방식이 화소 공간 방식보다 약 2.8배 적은 파라미터로도 월등한 성능(FID 13.27 vs 117.41)을 달성하여 효율성을 입증했습니다. 또한, 5개의 다중 참조 이미지를 사용했을 때 가장 안정적인 스타일 전이가 가능함을 확인했습니다. </p>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>모델</th>
+                                    <th>평가 대상</th>
+                                    <th>FID↓</th>
+                                    <th>SSIM↑</th>
+                                    <th>LPIPS↓</th>
+                                    <th>L1↓</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td rowspan="2" class="highlight">제안 모델</td>
+                                    <td>학습된 문자</td>
+                                    <td class="highlight">13.27</td>
+                                    <td class="highlight">0.9768</td>
+                                    <td class="highlight">0.0151</td>
+                                    <td class="highlight">0.0135</td>
+                                </tr>
+                                <tr>
+                                    <td>새로운 문자</td>
+                                    <td class="highlight">19.58</td>
+                                    <td class="highlight">0.9655</td>
+                                    <td class="highlight">0.0222</td>
+                                    <td class="highlight">0.0174</td>
+                                </tr>
+                                <tr>
+                                    <td rowspan="2">FontDiffuser[48]</td>
+                                    <td>학습된 문자</td>
+                                    <td>36.08</td>
+                                    <td>0.8695</td>
+                                    <td>0.0702</td>
+                                    <td>0.0578</td>
+                                </tr>
+                                <tr>
+                                    <td>새로운 문자</td>
+                                    <td>35.54</td>
+                                    <td>0.8601</td>
+                                    <td>0.0729</td>
+                                    <td>0.0622</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section id="conclusion">
+            <div class="container">
+                <h2>결론 및 향후 연구</h2>
+                <div class="card">
+                    <p>본 연구는 서명과 문자라는 두 가지 주요 필기 요소에 대해 각각 특화된 확산 모델을 성공적으로 제안하고, 그 성능을 실험적으로 검증했습니다. 서명 생성 모델은 시간-클래스 통합 임베딩, 적응적 자기 어텐션, EMA 네트워크를 통해 실제와 매우 유사한 고품질 서명 이미지를 안정적으로 생성할 수 있음을 보였습니다. 문자 생성 모델은 잠재 확산 모델과 이중 인코더 구조를 활용하여, 적은 파라미터로도 효율적인 스타일 전이와 뛰어난 일반화 성능을 달성했습니다. </p>
+                    <p>본 연구를 통해 확립된 설계 원칙들은 향후 필기 이미지 생성 연구에 중요한 가이드라인을 제공할 것입니다. 후속 연구로는 다양한 언어권의 서명 데이터셋을 이용한 일반화 성능 검증, 더 적은 수의 샘플로 학습하는 퓨샷(few-shot) 학습 기법 개발, 그리고 실제 손글씨 데이터의 자연스러운 변이성을 반영하는 연구가 필요합니다. 궁극적으로 본 연구의 모델들은 필기에 어려움을 겪는 사용자들을 위한 개인 필체 기반 전자문서 작성 시스템으로 발전하여 실질적인 도움을 제공하는 보조 기술이 될 수 있을 것으로 기대합니다. </p>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <div class="container">
+            <p>&copy; 2025 Dong-Jin Hong, Pusan National University. All rights reserved.</p>
+            <p>This webpage was generated based on the PhD thesis "A Study on Handwritten Image Generation based on Diffusion Model".</p>
+        </div>
+    </footer>
+
+</body>
+</html>
